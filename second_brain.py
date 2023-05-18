@@ -35,7 +35,25 @@ class second_brain():
         for i in search_database['results']:
             if(i['object']=='database'):
                  self.db_ids.update({i['title'][0]['text']['content']:i['id']})
-
+    def update_task_kanban_state(self):
+        if self.db_ids['Tasks Database'] == None:
+            return
+        task_database = self.get_database(self.db_ids['Tasks Database']) 
+        for task in (task_database.json())['results']:
+            if task['properties']['Done']['checkbox']:
+                if task['properties']['Kanban - State']['select'] == None or task['properties']['Kanban - State']['select']['name']!='Done':
+                    update_kanban_state = {'Kanban - State':{'type':'select', 'select':{'name':'Done', 'color':'green'}}}
+                    print("Done state")
+                    self.update_page(task['id'], update_kanban_state)
+            elif (task['properties']['Kanban - State']['select'] == None or task['properties']['Kanban - State']['select']['name']!='Failed') and task['properties']['Due']['date'] != None and datetime.datetime.strptime(task['properties']['Due']['date']['start'], "%Y-%m-%d") + datetime.timedelta(days=3) < datetime.datetime.today():
+                update_kanban_state = {'Kanban - State':{'type':'select', 'select':{'name':'Failed', 'color':'gray'}}}
+                print("Fail state")
+                self.update_page(task['id'], update_kanban_state)
+            elif (task['properties']['Kanban - State']['select'] == None or task['properties']['Kanban - State']['select']['name']!='Late') and task['properties']['Due']['date'] != None and datetime.datetime.strptime(task['properties']['Due']['date']['start'], "%Y-%m-%d") + datetime.timedelta(days=1) < datetime.datetime.today():
+                update_kanban_state = {'Kanban - State':{'type':'select', 'select':{'name':'Late', 'color':'default'}}}
+                print("Fail state")
+                self.update_page(task['id'], update_kanban_state)
+                
     def recur_task(self):
         if self.db_ids['Tasks Database'] == None:
             return
