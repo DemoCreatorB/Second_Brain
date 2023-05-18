@@ -35,9 +35,11 @@ class second_brain():
         for i in search_database['results']:
             if(i['object']=='database'):
                  self.db_ids.update({i['title'][0]['text']['content']:i['id']})
+
     def update_task_kanban_state(self):
         if self.db_ids['Tasks Database'] == None:
             return
+        print("---updating states---")
         task_database = self.get_database(self.db_ids['Tasks Database']) 
         for task in (task_database.json())['results']:
             if task['properties']['Done']['checkbox']:
@@ -45,18 +47,31 @@ class second_brain():
                     update_kanban_state = {'Kanban - State':{'type':'select', 'select':{'name':'Done', 'color':'green'}}}
                     print("Done state")
                     self.update_page(task['id'], update_kanban_state)
-            elif (task['properties']['Kanban - State']['select'] == None or task['properties']['Kanban - State']['select']['name']!='Failed') and task['properties']['Due']['date'] != None and datetime.datetime.strptime(task['properties']['Due']['date']['start'], "%Y-%m-%d") + datetime.timedelta(days=3) < datetime.datetime.today():
-                update_kanban_state = {'Kanban - State':{'type':'select', 'select':{'name':'Failed', 'color':'gray'}}}
-                print("Fail state")
-                self.update_page(task['id'], update_kanban_state)
-            elif (task['properties']['Kanban - State']['select'] == None or task['properties']['Kanban - State']['select']['name']!='Late') and task['properties']['Due']['date'] != None and datetime.datetime.strptime(task['properties']['Due']['date']['start'], "%Y-%m-%d") + datetime.timedelta(days=1) < datetime.datetime.today():
-                update_kanban_state = {'Kanban - State':{'type':'select', 'select':{'name':'Late', 'color':'default'}}}
-                print("Fail state")
-                self.update_page(task['id'], update_kanban_state)
-                
+            elif task['properties']['Due']['date'] == None:
+                continue
+            elif task['properties']['Due']['date']['end'] != None:
+                if (task['properties']['Kanban - State']['select'] == None or task['properties']['Kanban - State']['select']['name']!='Failed') and task['properties']['Due']['date']['end'] != None and datetime.datetime.strptime(task['properties']['Due']['date']['end'], "%Y-%m-%d") + datetime.timedelta(days=3) < datetime.datetime.today():
+                    update_kanban_state = {'Kanban - State':{'type':'select', 'select':{'name':'Failed', 'color':'gray'}}}
+                    print("Fail state")
+                    self.update_page(task['id'], update_kanban_state)
+                elif (task['properties']['Kanban - State']['select'] == None or task['properties']['Kanban - State']['select']['name']!='Late') and task['properties']['Due']['date']['end'] != None and datetime.datetime.strptime(task['properties']['Due']['date']['end'], "%Y-%m-%d") + datetime.timedelta(days=1) < datetime.datetime.today():
+                    update_kanban_state = {'Kanban - State':{'type':'select', 'select':{'name':'Late', 'color':'default'}}}
+                    print("Late state-end")
+                    self.update_page(task['id'], update_kanban_state)    
+            else:
+                if (task['properties']['Kanban - State']['select'] == None or task['properties']['Kanban - State']['select']['name']!='Failed') and task['properties']['Due']['date'] != None and datetime.datetime.strptime(task['properties']['Due']['date']['start'], "%Y-%m-%d") + datetime.timedelta(days=3) < datetime.datetime.today():
+                    update_kanban_state = {'Kanban - State':{'type':'select', 'select':{'name':'Failed', 'color':'gray'}}}
+                    print("Fail state")
+                    self.update_page(task['id'], update_kanban_state)
+                elif (task['properties']['Kanban - State']['select'] == None or task['properties']['Kanban - State']['select']['name']!='Late') and task['properties']['Due']['date'] != None and datetime.datetime.strptime(task['properties']['Due']['date']['start'], "%Y-%m-%d") + datetime.timedelta(days=1) < datetime.datetime.today():
+                    update_kanban_state = {'Kanban - State':{'type':'select', 'select':{'name':'Late', 'color':'default'}}}
+                    print("Late state-start")
+                    self.update_page(task['id'], update_kanban_state)
+
     def recur_task(self):
         if self.db_ids['Tasks Database'] == None:
             return
+        print("---recurring tasks---")
         task_database = self.get_database(self.db_ids['Tasks Database']) 
         with open('db.json', 'w', encoding='utf8') as f:
             json.dump(task_database.json(), f, ensure_ascii=False, indent=4)
@@ -64,15 +79,20 @@ class second_brain():
         parent_recur_tasks = list()
         child_recur_tasks = list()
         for task in (task_database.json())['results']:
-            if task['properties']['Next Due']['formula']['string'] == (datetime.datetime.today()+datetime.timedelta(days=1)).strftime("%B %d, %Y") and not task['properties']['Recur Done']['checkbox']:
-                print(task['properties']['Task']['title'][0]['text']['content'])
-                parent_recur_tasks.append(task['properties'])
-                update_recur_done = {'Recur Done':{'checkbox':True}}
-                self.update_page(task['id'], update_recur_done)
+            if task['properties']['Due']['date'] == None:
+                pass 
+            elif task['properties']['Due']['date']['end'] != None:
+                if task['properties']['Due']['date']['end'] == (datetime.datetime.today()).strftime("%Y-%m-%d") and task['properties']['Recur Interval']['number'] != None and not task['properties']['Recur Done']['checkbox']:    
+                    print(task['properties']['Task']['title'][0]['text']['content'])
+                    parent_recur_tasks.append(task['properties'])
+            else:
+                if task['properties']['Due']['date']['start'] == (datetime.datetime.today()).strftime("%Y-%m-%d") and task['properties']['Recur Interval']['number'] != None  and not task['properties']['Recur Done']['checkbox']:
+                    print(task['properties']['Task']['title'][0]['text']['content'])
+                    parent_recur_tasks.append(task)
         
         for task in parent_recur_tasks:
             temp = dict()
-            temp.update({'Task': {'type':'title','title':[{'type':'text', 'text':{'content':task['Task']['title'][0]['text']['content'], 'link':None},
+            temp.update({'Task': {'type':'title','title':[{'type':'text', 'text':{'content':task['properties']['Task']['title'][0]['text']['content'], 'link':None},
                             "annotations": {
                                 "bold": False,
                                 "italic": False,
@@ -80,15 +100,18 @@ class second_brain():
                                 "underline": False,
                                 "code": False,
                                 "color": "default"
-                            },'plain_text':task['Task']['title'][0]['plain_text']}]}})
-            temp.update({'Due':{'date':{'start':(datetime.datetime.today()+datetime.timedelta(days=1)).strftime("%Y-%m-%d")}}})
-            temp.update({'Recur Unit':{'type':'select', 'select':{'name':task['Recur Unit']['select']['name'], 'color':task['Recur Unit']['select']['color']}}})
-            temp.update({'Recur Interval':{'type':'number', 'number':task['Recur Interval']['number']}})
-            temp.update({'Priority':{'type':'select', 'select':{'name':task['Priority']['select']['name'], 'color':task['Priority']['select']['color']}}})
+                            },'plain_text':task['properties']['Task']['title'][0]['plain_text']}]}})
+            temp.update({'Due':{'date':{'start':(datetime.datetime.strptime(task['properties']['Next Due']['formula']['string'], "%B %d, %Y")).strftime("%Y-%m-%d")}}})
+            temp.update({'Recur Unit':{'type':'select', 'select':{'name':task['properties']['Recur Unit']['select']['name'], 'color':task['properties']['Recur Unit']['select']['color']}}})
+            temp.update({'Recur Interval':{'type':'number', 'number':task['properties']['Recur Interval']['number']}}) 
+            temp.update({'Priority':{'type':'select', 'select':{'name':task['properties']['Priority']['select']['name'], 'color':task['properties']['Priority']['select']['color']}}})
             temp.update({'Kanban - State':{'type':'select', 'select':{'name':'To Do', 'color':'red'}}})
-            if task['Days (Only if Set to 1 Day(s))']['select'] != None:
-                temp.update({'Days (Only if Set to 1 Day(s))': {'type':'select', 'select':{'name':task['Days (Only if Set to 1 Day(s))']['select']['name'], 'color':task['Days (Only if Set to 1 Day(s))']['select']['color']}}})
+            if task['properties']['Days (Only if Set to 1 Day(s))']['select'] != None:
+                temp.update({'Days (Only if Set to 1 Day(s))': {'type':'select', 'select':{'name':task['properties']['Days (Only if Set to 1 Day(s))']['select']['name'], 'color':task['properties']['Days (Only if Set to 1 Day(s))']['select']['color']}}})
             child_recur_tasks.append(temp)
+            update_recur_done = {'Recur Done':{'checkbox':True}}
+            self.update_page(task['id'], update_recur_done)
+
 
         
         for task in child_recur_tasks:
