@@ -32,6 +32,9 @@ class second_brain():
             'property': 'object',
             'value': 'database'
         })
+        
+        with open('db.json', 'w', encoding='utf8') as f:
+            json.dump(search_database, f, ensure_ascii=False, indent=4)
         for i in search_database['results']:
             if(i['object']=='database'):
                  self.db_ids.update({i['title'][0]['text']['content']:i['id']})
@@ -42,39 +45,39 @@ class second_brain():
         print("---updating states---")
         task_database = self.get_database(self.db_ids['Tasks Database']) 
         for task in (task_database.json())['results']:
-            if task['properties']['Done']['checkbox']:
+            if task['properties']['Due']['date'] == None or (task['properties']['Kanban - State']['select'] != None and task['properties']['Kanban - State']['select']['name'] == 'Failed'):
+                continue
+            elif task['properties']['Done']['checkbox']:
                 if task['properties']['Kanban - State']['select'] == None or task['properties']['Kanban - State']['select']['name']!='Done':
                     update_kanban_state = {'Kanban - State':{'type':'select', 'select':{'name':'Done', 'color':'green'}}}
                     print("Done state")
                     self.update_page(task['id'], update_kanban_state)
-            elif task['properties']['Due']['date'] == None:
-                continue
             elif task['properties']['Due']['date']['end'] != None:
-                if (task['properties']['Kanban - State']['select'] == None or task['properties']['Kanban - State']['select']['name']!='Failed') and task['properties']['Due']['date']['end'] != None and datetime.datetime.strptime(task['properties']['Due']['date']['end'], "%Y-%m-%d") + datetime.timedelta(days=3) < datetime.datetime.today():
+                if (task['properties']['Kanban - State']['select'] == None or task['properties']['Kanban - State']['select']['name']!='Failed') and task['properties']['Due']['date']['end'] != None and datetime.datetime.strptime(task['properties']['Due']['date']['end'][0:10], "%Y-%m-%d") + datetime.timedelta(days=3) < datetime.datetime.today():
                     update_kanban_state = {'Kanban - State':{'type':'select', 'select':{'name':'Failed', 'color':'gray'}}}
                     print("Fail state")
                     self.update_page(task['id'], update_kanban_state)
-                elif (task['properties']['Kanban - State']['select'] == None or task['properties']['Kanban - State']['select']['name']!='Late') and task['properties']['Due']['date']['end'] != None and datetime.datetime.strptime(task['properties']['Due']['date']['end'], "%Y-%m-%d") + datetime.timedelta(days=1) < datetime.datetime.today():
+                elif (task['properties']['Kanban - State']['select'] == None or task['properties']['Kanban - State']['select']['name']!='Late') and task['properties']['Due']['date']['end'] != None and datetime.datetime.strptime(task['properties']['Due']['date']['end'][0:10], "%Y-%m-%d") + datetime.timedelta(days=1) < datetime.datetime.today():
                     update_kanban_state = {'Kanban - State':{'type':'select', 'select':{'name':'Late', 'color':'default'}}}
                     print("Late state-end")
                     self.update_page(task['id'], update_kanban_state)    
             else:
-                if (task['properties']['Kanban - State']['select'] == None or task['properties']['Kanban - State']['select']['name']!='Failed') and task['properties']['Due']['date'] != None and datetime.datetime.strptime(task['properties']['Due']['date']['start'], "%Y-%m-%d") + datetime.timedelta(days=3) < datetime.datetime.today():
+                if (task['properties']['Kanban - State']['select'] == None or task['properties']['Kanban - State']['select']['name']!='Failed') and task['properties']['Due']['date'] != None and datetime.datetime.strptime(task['properties']['Due']['date']['start'][0:10], "%Y-%m-%d") + datetime.timedelta(days=3) < datetime.datetime.today():
                     update_kanban_state = {'Kanban - State':{'type':'select', 'select':{'name':'Failed', 'color':'gray'}}}
                     print("Fail state")
                     self.update_page(task['id'], update_kanban_state)
-                elif (task['properties']['Kanban - State']['select'] == None or task['properties']['Kanban - State']['select']['name']!='Late') and task['properties']['Due']['date'] != None and datetime.datetime.strptime(task['properties']['Due']['date']['start'], "%Y-%m-%d") + datetime.timedelta(days=1) < datetime.datetime.today():
-                    update_kanban_state = {'Kanban - State':{'type':'select', 'select':{'name':'Late', 'color':'default'}}}
-                    print("Late state-start")
-                    self.update_page(task['id'], update_kanban_state)
+                elif (task['properties']['Kanban - State']['select'] == None or task['properties']['Kanban - State']['select']['name']!='Late') and task['properties']['Due']['date'] != None and datetime.datetime.strptime(task['properties']['Due']['date']['start'][0:10], "%Y-%m-%d") + datetime.timedelta(days=1) < datetime.datetime.today():
+                        update_kanban_state = {'Kanban - State':{'type':'select', 'select':{'name':'Late', 'color':'default'}}}
+                        print("Late state-start")
+                        self.update_page(task['id'], update_kanban_state)
 
     def recur_task(self):
         if self.db_ids['Tasks Database'] == None:
             return
         print("---recurring tasks---")
         task_database = self.get_database(self.db_ids['Tasks Database']) 
-        with open('db.json', 'w', encoding='utf8') as f:
-            json.dump(task_database.json(), f, ensure_ascii=False, indent=4)
+        # with open('db.json', 'w', encoding='utf8') as f:
+        #     json.dump(task_database.json(), f, ensure_ascii=False, indent=4)
         
         parent_recur_tasks = list()
         child_recur_tasks = list()
