@@ -82,14 +82,14 @@ class second_brain():
         parent_recur_tasks = list()
         child_recur_tasks = list()
         for task in (task_database.json())['results']:
-            if task['properties']['Due']['date'] == None:
-                pass 
+            if task['properties']['Due']['date'] == None or task['properties']['Recur Done']['checkbox']:
+                continue
             elif task['properties']['Due']['date']['end'] != None:
-                if task['properties']['Due']['date']['end'] == (datetime.datetime.today()).strftime("%Y-%m-%d") and task['properties']['Recur Interval']['number'] != None and not task['properties']['Recur Done']['checkbox']:    
+                if task['properties']['Due']['date']['end'] == (datetime.datetime.today()).strftime("%Y-%m-%d") and task['properties']['Recur Interval']['number'] != None:    
                     print(task['properties']['Task']['title'][0]['text']['content'])
                     parent_recur_tasks.append(task['properties'])
             else:
-                if task['properties']['Due']['date']['start'] == (datetime.datetime.today()).strftime("%Y-%m-%d") and task['properties']['Recur Interval']['number'] != None  and not task['properties']['Recur Done']['checkbox']:
+                if task['properties']['Due']['date']['start'] == (datetime.datetime.today()).strftime("%Y-%m-%d") and task['properties']['Recur Interval']['number'] != None:
                     print(task['properties']['Task']['title'][0]['text']['content'])
                     parent_recur_tasks.append(task)
         
